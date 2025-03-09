@@ -76,6 +76,13 @@ gpqa_metric = multilingual_extractive_match_metric(
     precision=5,
 )
 
+def amc_prompt_fn(line, task_name: str = None):
+    return Doc(
+        task_name=task_name,
+        query=MATH_QUERY_TEMPLATE.format(Question=line["question"]),
+        choices=[line["answer"]],
+        gold_index=0,
+    )
 
 def math_prompt_fn(line, task_name: str = None):
     return Doc(
@@ -110,7 +117,34 @@ def gpqa_prompt_fn(line, task_name: str = None):
         instruction=query,
     )
 
-
+amc23 = LightevalTaskConfig(
+    name="amc23",
+    suite=["custom"],
+    prompt_function=amc_prompt_fn,
+    hf_repo="math-ai/amc23",
+    hf_subset="default",
+    hf_avail_splits=["test"],
+    evaluation_splits=["test"],
+    few_shots_split=None,
+    few_shots_select=None,
+    generation_size=32000,
+    metric=[expr_gold_metric],
+    version=1,
+)
+gsm8k = LightevalTaskConfig(
+    name="gsm8k",
+    suite=["custom"],
+    prompt_function=amc_prompt_fn,
+    hf_repo="InfiniAILab/gsm8k",
+    hf_subset="default",
+    hf_avail_splits=["test"],
+    evaluation_splits=["test"],
+    few_shots_split=None,
+    few_shots_select=None,
+    generation_size=8192,
+    metric=[expr_gold_metric],
+    version=1,
+)
 # Define tasks
 aime24 = LightevalTaskConfig(
     name="aime24",
