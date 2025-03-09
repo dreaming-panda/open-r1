@@ -210,6 +210,8 @@ gpqa_diamond = LightevalTaskConfig(
 TASKS_TABLE = []
 TASKS_TABLE.append(aime24)
 TASKS_TABLE.append(aime25)
+TASKS_TABLE.append(amc23)
+TASKS_TABLE.append(gsm8k)
 TASKS_TABLE.append(math_500)
 TASKS_TABLE.append(gpqa_diamond)
 
