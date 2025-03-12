@@ -30,6 +30,49 @@ import random
 import numpy as np
 from open_r1.SparseQwen import Qwen2ForCausalLM
 
+
+DATAMAP = {
+    "amc23": "math-ai/amc23",
+    "aime24": "HuggingFaceH4/aime_2024",
+    "gsm8k": "InfiniAILab/gsm8k",
+    "math500": "HuggingFaceH4/MATH-500"
+}
+
+
+SPLITMAP = {
+    "amc23": "test",
+    "aime24": "train",
+    "gsm8k": "test",
+    "math500": "test"
+}
+
+COLUMNMAP = {
+    "amc23": "question",
+    "aime24": "problem",
+    "gsm8k": "question",
+    "math500": "problem"
+}
+
+ANSWERMAP = {
+    "amc23": "answer",
+    "aime24": "answer",
+    "gsm8k": "answer",
+    "math500": "solution"
+}
+
+GENLENMAP = {
+    "amc23": 30768,
+    "aime24": 30768,
+    "gsm8k": 8192,
+    "math500": 30768
+}
+
+JUDGEMAP = {
+    "amc23": "expr",
+    "aime24": "expr",
+    "gsm8k": "expr",
+    "math500": "latex"
+}
 def set_seed(seed):
     random.seed(seed)
     np.random.seed(seed)
@@ -47,7 +90,15 @@ def worker(rank, world_size, args, shared_list):
     tokenizer = AutoTokenizer.from_pretrained(args.model)
     llm.eval()
 
-    dataset = load_dataset("math-ai/amc23", split="test")
+    data = DATAMAP[args.task]
+    split = SPLITMAP[args.task]
+    column = COLUMNMAP[args.task]
+    gen_len = GENLENMAP[args.task]
+    answer_column = ANSWERMAP[args.task]
+    judge = JUDGEMAP[args.task]
+    
+    
+    dataset = load_dataset(data, split=split)
     
     total = len(dataset)
 
@@ -57,22 +108,33 @@ def worker(rank, world_size, args, shared_list):
     end = start + per_proc + (1 if rank < remainder else 0)  
     subset = dataset.select(list(range(start, end)))
     
-    expr_gold_metric = multilingual_extractive_match_metric(
-        language=Language.ENGLISH,
-        fallback_mode="first_match",
-        precision=5,
-        gold_extraction_target=(ExprExtractionConfig(),),
-        pred_extraction_target=(ExprExtractionConfig(), LatexExtractionConfig(boxed_match_priority=0)),
-        aggregation_function=max,
-    )
+    if judge == "expr":
+        gold_metric = multilingual_extractive_match_metric(
+            language=Language.ENGLISH,
+            fallback_mode="first_match",
+            precision=5,
+            gold_extraction_target=(ExprExtractionConfig(),),
+            pred_extraction_target=(ExprExtractionConfig(), LatexExtractionConfig(boxed_match_priority=0)),
+            aggregation_function=max,
+        )
+    
+    else:
+        gold_metric = multilingual_extractive_match_metric(
+            language=Language.ENGLISH,
+            fallback_mode="first_match",
+            precision=5,
+            gold_extraction_target=(LatexExtractionConfig(),),
+            pred_extraction_target=(ExprExtractionConfig(), LatexExtractionConfig(boxed_match_priority=0)),
+            aggregation_function=max,
+        )
 
     for i in range(args.trial):
         set_seed(42 + i)
         for data in tqdm(subset, desc=f"Process {rank}", position=rank):
-                golds = [data["answer"]]
-                target = Doc(query=data["question"],choices=golds, gold_index=0)
+                golds = [data[answer_column]]
+                target = Doc(query=data[column],choices=golds, gold_index=0)
                 coversation = [
-                    {"role": "user", "content":MATH_QUERY_TEMPLATE.format(Question=data["question"])}
+                    {"role": "user", "content":MATH_QUERY_TEMPLATE.format(Question=data[column])}
                 ]
                 inputs = tokenizer.apply_chat_template(conversation=coversation, add_generation_prompt=True, tokenize=True, return_tensors="pt").to(rank)
 
@@ -83,11 +145,11 @@ def worker(rank, world_size, args, shared_list):
                                 stopping_criteria=stopping_criteria, 
                                 temperature=0.6,
                                 top_p = 0.95, 
-                                max_new_tokens=30768)
+                                max_new_tokens=gen_len)
                 
                 predictions = tokenizer.decode(output[0][inputs.shape[1]:], skip_special_tokens=True, clean_up_tokenization_spaces=True)
                 
-                result = expr_gold_metric.compute(golds=golds,predictions=[predictions],formatted_doc=target)
+                result = gold_metric.compute(golds=golds,predictions=[predictions],formatted_doc=target)
                 shared_list.append(
                     {   
                         "id": data["id"],
@@ -95,7 +157,7 @@ def worker(rank, world_size, args, shared_list):
                         "prediction": [predictions],
                         "gold_index": 0,
                         "choices": golds,
-                        "query": data["question"]
+                        "query": data[column]
                     }
                 )
         
