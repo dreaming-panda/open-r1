@@ -95,7 +95,7 @@ def worker(rank, world_size, args, shared_list):
                         "prediction": [predictions],
                         "gold_index": 0,
                         "choices": golds,
-                        "query": data["problem"]
+                        "query": data["question"]
                     }
                 )
         
