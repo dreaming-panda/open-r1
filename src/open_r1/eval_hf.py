@@ -113,7 +113,7 @@ def main():
 
     os.makedirs(args.output_dir, exist_ok=True)
     current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    output_file = os.path.join(args.output_dir, f"aime2024_{current_time}.jsonl")
+    output_file = os.path.join(args.output_dir, f"{args.task}_{current_time}.jsonl")
 
     # Use mp.Manager to create a shared list for process-safe communication
     mp.set_start_method("spawn", force=True)
