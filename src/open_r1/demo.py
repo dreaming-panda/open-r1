@@ -1,13 +1,12 @@
-#from open_r1.ConvQwen import Qwen2ForCausalLM, Qwen2Config
-from transformers import AutoTokenizer, Qwen2ForCausalLM, TextStreamer
+from open_r1.SparseQwen import Qwen2ForCausalLM, Qwen2Config
+from transformers import AutoTokenizer, TextStreamer
 import torch
-from flash_attn import flash_attn_varlen_func
-model_name = "/home/zhuominc/OpenEval/open-r1/src/open_r1/Qwen-1.5B-Instruct-Conv-Unrolled"
+model_name = "ZMC2019/Qwen-E-7B-Instruct"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = Qwen2ForCausalLM.from_pretrained(
     model_name, 
     torch_dtype=torch.bfloat16, 
-    device_map="cuda:0", _attn_implementation="flash_attention_2"
+    device_map="cuda:0", _attn_implementation="flash_attention_2", use_sliding_window=True
 )
 
 MATH_QUERY_TEMPLATE = """
