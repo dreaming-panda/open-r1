@@ -3,9 +3,9 @@ import torch
 import copy
 
 # Load model and configuration
-config = Qwen2Config.from_pretrained("ZMC2019/OpenR1-Qwen-1.5B-SFT-Instruct-Conv")
-model = Qwen2ForCausalLM.from_pretrained("ZMC2019/OpenR1-Qwen-1.5B-SFT-Instruct-Conv", torch_dtype=torch.bfloat16)
-tokenizer = AutoTokenizer.from_pretrained("ZMC2019/OpenR1-Qwen-1.5B-SFT-Instruct-Conv")
+config = Qwen2Config.from_pretrained("ZMC2019/Qwen1.5B-Conv-L52-rolled")
+model = Qwen2ForCausalLM.from_pretrained("ZMC2019/Qwen1.5B-Conv-L52-rolled", torch_dtype=torch.bfloat16)
+tokenizer = AutoTokenizer.from_pretrained("ZMC2019/Qwen1.5B-Conv-L52-rolled")
 
 start_conv_idx = config.start_conv_idx
 end_conv_idx = config.end_conv_idx
