@@ -1,11 +1,14 @@
 from transformers import Qwen2ForCausalLM, Qwen2Config, AutoTokenizer
 import torch
 import copy
-
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument('--model', type=str, default="ZMC2019/Qwen1.5B-Conv-L52-rolled",help='model')
+args = parser.parse_args()
 # Load model and configuration
-config = Qwen2Config.from_pretrained("ZMC2019/Qwen1.5B-Conv-L52-rolled")
-model = Qwen2ForCausalLM.from_pretrained("ZMC2019/Qwen1.5B-Conv-L52-rolled", torch_dtype=torch.bfloat16)
-tokenizer = AutoTokenizer.from_pretrained("ZMC2019/Qwen1.5B-Conv-L52-rolled")
+config = Qwen2Config.from_pretrained(args.model)
+model = Qwen2ForCausalLM.from_pretrained(args.model, torch_dtype=torch.bfloat16)
+tokenizer = AutoTokenizer.from_pretrained(args.model)
 
 start_conv_idx = config.start_conv_idx
 end_conv_idx = config.end_conv_idx
