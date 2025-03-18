@@ -31,13 +31,13 @@ eval_strategy: 'no'
 gradient_checkpointing: true
 gradient_checkpointing_kwargs:
   use_reentrant: false
-hub_model_id: Qwen7B-Roll-L28E3
+hub_model_id: Qwen7B-Roll-L28E3X
 hub_strategy: every_save
 log_level: info
 logging_steps: 5
 logging_strategy: steps
 packing: true
-output_dir: data/Qwen7B-Roll-L28E3
+output_dir: data/Qwen7B-Roll-L28E3X
 overwrite_output_dir: true
 push_to_hub: true
 report_to:
