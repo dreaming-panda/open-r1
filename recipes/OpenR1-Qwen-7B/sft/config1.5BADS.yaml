@@ -1,7 +1,7 @@
 # Model arguments
 # You need to download the model and manually change the rope to 300k and max_position_embeddings to 32768
 # the config file should match https://huggingface.co/open-r1/OpenR1-Qwen-7B/blob/main/config.json
-model_name_or_path: agentica-org/DeepScaleR-1.5B-Preview
+model_name_or_path: deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B
 model_revision: main
 torch_dtype: bfloat16
 attn_implementation: flash_attention_2
