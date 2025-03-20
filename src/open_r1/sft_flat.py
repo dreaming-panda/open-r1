@@ -155,6 +155,8 @@ def main(script_args, training_args, model_args):
     # Replace model layers with the expanded ones
     model.model.layers = torch.nn.ModuleList(layers)
 
+    for i, layer in enumerate(model.model.layers):
+        layer.self_attn.layer_idx = i
     # Update configuration
     model.config.num_hidden_layers = config.num_hidden_layers + (config.end_conv_idx - config.start_conv_idx) * config.num_conv
 
