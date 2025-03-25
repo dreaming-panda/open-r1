@@ -53,3 +53,54 @@ def get_optimizer_parameter_group_qwen(
     ]
     
     return {"optimizer_dict": optimizer_dict, 'betas': (0.9, 0.999), 'eps': 1e-08}
+
+import transformers
+from transformers.trainer_pt_utils import get_parameter_names
+from transformers.pytorch_utils import ALL_LAYERNORM_LAYERS
+
+def get_optimizer_parameter_group_qwen_freeze(
+    model,
+    start_adj_lr_idx, 
+    end_adj_lr_idx,
+    adj_lr,
+    weight_decay,
+    verbose=False
+):
+    decay_parameters = get_parameter_names(model, ALL_LAYERNORM_LAYERS, ["bias", "layernorm", "rmsnorm"])
+    decay_parameters = set(decay_parameters)
+
+    group_decay_adj = []
+    group_nodecay_adj = []
+
+    for name, param in model.named_parameters():
+        # 默认 freeze 所有参数
+        param.requires_grad = False
+
+        # 是否是 transformer block
+        if "model.layers." in name:
+            parts = name.split(".")
+            try:
+                block_idx = int(parts[2])
+            except ValueError:
+                continue
+
+            if start_adj_lr_idx <= block_idx < end_adj_lr_idx:
+                # Unfreeze
+                param.requires_grad = True
+
+                use_decay = name in decay_parameters
+                if use_decay:
+                    group_decay_adj.append(param)
+                    if verbose:
+                        print(f"Trainable with decay: {name}")
+                else:
+                    group_nodecay_adj.append(param)
+                    if verbose:
+                        print(f"Trainable without decay: {name}")
+
+    optimizer_dict = [
+        {"params": group_decay_adj, "lr": adj_lr, "weight_decay": weight_decay},
+        {"params": group_nodecay_adj, "lr": adj_lr, "weight_decay": 0.0},
+    ]
+
+    return {"optimizer_dict": optimizer_dict, 'betas': (0.9, 0.999), 'eps': 1e-08}
