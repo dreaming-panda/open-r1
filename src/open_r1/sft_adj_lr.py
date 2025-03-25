@@ -152,7 +152,7 @@ def main(script_args, training_args, model_args):
     trainer = SFTTrainer(
         model=model,
         args=training_args,
-        #optimizer_cls_and_kwargs=(AdamW, optimizer_kwargs),
+        optimizer_cls_and_kwargs=(AdamW, optimizer_kwargs),
         train_dataset=dataset[script_args.dataset_train_split],
         eval_dataset=dataset[script_args.dataset_test_split] if training_args.eval_strategy != "no" else None,
         processing_class=tokenizer,
