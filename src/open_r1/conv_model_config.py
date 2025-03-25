@@ -169,6 +169,20 @@ class ConvModelConfig:
         metadata={"help": "number of convolutions applied"},
     )
     
+    start_adj_lr_idx: int = field(
+        default=17,
+        metadata={"help": "The first layer to apply adjusted learning rate. (Include)"},
+    )
+    
+    end_adj_lr_idx: int = field(
+        default=27,
+        metadata={"help": "The last layer to apply adjusted learning rate. (Exclude)"},
+    )
+    adj_lr: float = field(
+        default=1e-4,
+        metadata={"help": "The adjusted learning rate."},
+    )
+    
     def __post_init__(self):
         if self.load_in_8bit and self.load_in_4bit:
             raise ValueError("You can't use 8 bit and 4 bit precision at the same time")

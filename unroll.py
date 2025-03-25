@@ -2,6 +2,7 @@ from transformers import Qwen2ForCausalLM, Qwen2Config, AutoTokenizer
 import torch
 import copy
 import argparse
+import open_r1
 parser = argparse.ArgumentParser()
 parser.add_argument('--model', type=str, default="ZMC2019/Qwen1.5B-Conv-L52-rolled",help='model')
 args = parser.parse_args()
