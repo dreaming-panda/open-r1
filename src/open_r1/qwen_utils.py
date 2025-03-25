@@ -73,9 +73,7 @@ def get_optimizer_parameter_group_qwen_freeze(
     group_nodecay_adj = []
 
     for name, param in model.named_parameters():
-        # 默认 freeze 所有参数
-        param.requires_grad = False
-
+        
         # 是否是 transformer block
         if "model.layers." in name:
             parts = name.split(".")
@@ -85,8 +83,6 @@ def get_optimizer_parameter_group_qwen_freeze(
                 continue
 
             if start_adj_lr_idx <= block_idx < end_adj_lr_idx:
-                # Unfreeze
-                param.requires_grad = True
 
                 use_decay = name in decay_parameters
                 if use_decay:
