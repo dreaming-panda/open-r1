@@ -33,7 +33,7 @@ from transformers.utils import (
     replace_return_docstrings,
 )
 from transformers.utils.deprecation import deprecate_kwarg
-from transformers.models.qwen2.configuration_qwen2 import Qwen2Config
+from sparse_qwen_config import SparseQwen2Config as Qwen2Config
 from transformers.models.qwen2.modeling_qwen2 import apply_rotary_pos_emb, eager_attention_forward, Qwen2MLP, Qwen2RMSNorm, Qwen2RotaryEmbedding, Qwen2PreTrainedModel, QWEN2_START_DOCSTRING, QWEN2_INPUTS_DOCSTRING
 from liger_kernel.transformers.fused_linear_cross_entropy import LigerFusedLinearCrossEntropyLoss
 logger = logging.get_logger(__name__)
@@ -50,6 +50,7 @@ class Qwen2Attention(nn.Module):
         self.layer_idx = layer_idx
         self.head_dim = getattr(config, "head_dim", config.hidden_size // config.num_attention_heads)
         self.num_key_value_groups = config.num_attention_heads // config.num_key_value_heads
+        self.sparse_head_dim = config.sparse_head_dim
         self.scaling = self.head_dim**-0.5
         self.attention_dropout = config.attention_dropout
         self.is_causal = True
@@ -57,7 +58,10 @@ class Qwen2Attention(nn.Module):
         self.k_proj = nn.Linear(config.hidden_size, config.num_key_value_heads * self.head_dim, bias=True)
         self.v_proj = nn.Linear(config.hidden_size, config.num_key_value_heads * self.head_dim, bias=True)
         self.o_proj = nn.Linear(config.num_attention_heads * self.head_dim, config.hidden_size, bias=False)
-
+    
+        self.q_sparser = nn.Linear(config.hidden_size, config.num_attention_heads * self.sparse_head_dim, bias=True)
+        self.k_sparser = nn.Linear(config.hidden_size, config.num_key_value_heads * self.sparse_head_dim, bias=True)
+        
     def forward(
         self,
         hidden_states: torch.Tensor,
