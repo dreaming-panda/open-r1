@@ -33,167 +33,40 @@ from transformers.utils import (
     replace_return_docstrings,
 )
 from transformers.utils.deprecation import deprecate_kwarg
-from sparse_qwen_config import SparseQwen2Config
-from transformers.models.qwen2.modeling_qwen2 import apply_rotary_pos_emb, eager_attention_forward, Qwen2MLP, Qwen2RMSNorm, Qwen2RotaryEmbedding, Qwen2PreTrainedModel, QWEN2_START_DOCSTRING, QWEN2_INPUTS_DOCSTRING
+from transformers.models.qwen2.configuration_qwen2 import Qwen2Config
+from transformers.models.qwen2.modeling_qwen2 import apply_rotary_pos_emb, eager_attention_forward, Qwen2RMSNorm, Qwen2RotaryEmbedding, Qwen2PreTrainedModel, QWEN2_START_DOCSTRING, QWEN2_INPUTS_DOCSTRING
 from liger_kernel.transformers.fused_linear_cross_entropy import LigerFusedLinearCrossEntropyLoss
 logger = logging.get_logger(__name__)
-from dataclasses import dataclass
-from transformers.utils import ModelOutput
+
 _CHECKPOINT_FOR_DOC = "meta-qwen2/Qwen2-2-7b-hf"
 _CONFIG_FOR_DOC = "Qwen2Config"
 
-import torch
-import torch.nn.functional as F
-
-@dataclass
-class SparseModelOutputWithPast(ModelOutput):
-    """
-    Base class for model's outputs that may also contain a past key/values (to speed up sequential decoding).
-
-    Args:
-        last_hidden_state (`torch.FloatTensor` of shape `(batch_size, sequence_length, hidden_size)`):
-            Sequence of hidden-states at the output of the last layer of the model.
-
-            If `past_key_values` is used only the last hidden-state of the sequences of shape `(batch_size, 1,
-            hidden_size)` is output.
-        
-        attention_loss (`tuple(torch.FloatTensor)`, *optional*, returned when `output_attentions=True` is passed or when `config.output_attentions=True`):
-            Tuple of `torch.FloatTensor` (one for each layer) of shape `(batch_size, num_heads, sequence_length,
-            sequence_length)`.
-
-            Attention Approximation Loss
-            
-        past_key_values (`tuple(tuple(torch.FloatTensor))`, *optional*, returned when `use_cache=True` is passed or when `config.use_cache=True`):
-            Tuple of `tuple(torch.FloatTensor)` of length `config.n_layers`, with each tuple having 2 tensors of shape
-            `(batch_size, num_heads, sequence_length, embed_size_per_head)`) and optionally if
-            `config.is_encoder_decoder=True` 2 additional tensors of shape `(batch_size, num_heads,
-            encoder_sequence_length, embed_size_per_head)`.
-
-            Contains pre-computed hidden-states (key and values in the self-attention blocks and optionally if
-            `config.is_encoder_decoder=True` in the cross-attention blocks) that can be used (see `past_key_values`
-            input) to speed up sequential decoding.
-        hidden_states (`tuple(torch.FloatTensor)`, *optional*, returned when `output_hidden_states=True` is passed or when `config.output_hidden_states=True`):
-            Tuple of `torch.FloatTensor` (one for the output of the embeddings, if the model has an embedding layer, +
-            one for the output of each layer) of shape `(batch_size, sequence_length, hidden_size)`.
-
-            Hidden-states of the model at the output of each layer plus the optional initial embedding outputs.
-        attentions (`tuple(torch.FloatTensor)`, *optional*, returned when `output_attentions=True` is passed or when `config.output_attentions=True`):
-            Tuple of `torch.FloatTensor` (one for each layer) of shape `(batch_size, num_heads, sequence_length,
-            sequence_length)`.
-
-            Attentions weights after the attention softmax, used to compute the weighted average in the self-attention
-            heads.
-    """
-
-    last_hidden_state: torch.FloatTensor = None
-    attention_loss: torch.FloatTensor = None
-    recall: float = None
-    past_key_values: Optional[Tuple[Tuple[torch.FloatTensor]]] = None
-    hidden_states: Optional[Tuple[torch.FloatTensor, ...]] = None
-    attentions: Optional[Tuple[torch.FloatTensor, ...]] = None
-
-
-@dataclass
-class SparseCausalLMOutputWithPast(ModelOutput):
-    """
-    Base class for causal language model (or autoregressive) outputs.
-
-    Args:
-        loss (`torch.FloatTensor` of shape `(1,)`, *optional*, returned when `labels` is provided):
-            Language modeling loss (for next-token prediction).
-        
-        attention_loss (`tuple(torch.FloatTensor)`, *optional*, returned when `output_attentions=True` is passed or when `config.output_attentions=True`):
-            Tuple of `torch.FloatTensor` (one for each layer) of shape `(batch_size, num_heads, sequence_length,
-            sequence_length)`.
-
-            Attention Approximation Loss
-        
-        logits (`torch.FloatTensor` of shape `(batch_size, sequence_length, config.vocab_size)`):
-            Prediction scores of the language modeling head (scores for each vocabulary token before SoftMax).
-        past_key_values (`tuple(tuple(torch.FloatTensor))`, *optional*, returned when `use_cache=True` is passed or when `config.use_cache=True`):
-            Tuple of `tuple(torch.FloatTensor)` of length `config.n_layers`, with each tuple having 2 tensors of shape
-            `(batch_size, num_heads, sequence_length, embed_size_per_head)`)
-
-            Contains pre-computed hidden-states (key and values in the self-attention blocks) that can be used (see
-            `past_key_values` input) to speed up sequential decoding.
-        hidden_states (`tuple(torch.FloatTensor)`, *optional*, returned when `output_hidden_states=True` is passed or when `config.output_hidden_states=True`):
-            Tuple of `torch.FloatTensor` (one for the output of the embeddings, if the model has an embedding layer, +
-            one for the output of each layer) of shape `(batch_size, sequence_length, hidden_size)`.
-
-            Hidden-states of the model at the output of each layer plus the optional initial embedding outputs.
-        attentions (`tuple(torch.FloatTensor)`, *optional*, returned when `output_attentions=True` is passed or when `config.output_attentions=True`):
-            Tuple of `torch.FloatTensor` (one for each layer) of shape `(batch_size, num_heads, sequence_length,
-            sequence_length)`.
-
-            Attentions weights after the attention softmax, used to compute the weighted average in the self-attention
-            heads.
-    """
-
-    loss: Optional[torch.FloatTensor] = None
-    attention_loss: torch.FloatTensor = None
-    recall: float = None
-    logits: torch.FloatTensor = None
-    past_key_values: Optional[Tuple[Tuple[torch.FloatTensor]]] = None
-    hidden_states: Optional[Tuple[torch.FloatTensor, ...]] = None
-    attentions: Optional[Tuple[torch.FloatTensor, ...]] = None
-
-def attention_kl_loss(low_attn_weights, attn_weights, eps=1e-8):
-    """
-    Computes KL divergence loss between two attention distributions.
-    KL(P || Q): target = attn_weights, prediction = low_attn_weights
-    """
-    # Clamp for numerical stability
-    low_attn = torch.clamp(low_attn_weights, min=eps)
-    attn = torch.clamp(attn_weights, min=eps)
-    # KL divergence is sum(P * log(P / Q)) along last dim
-    kl = attn * (attn.log() - low_attn.log())
-    return kl.sum(dim=-1).mean()  # average over kv_len, then across batch
-
-@torch.no_grad()
-def topk_recall(low_attn_weights, attn_weights, k=10):
-    """
-    Compute Top-K Recall between low_attn_weights and attn_weights.
-    Both should be (bsz, num_heads, q_len, kv_len) and row-normalized.
-    """
-    # Get Top-K indices for both distributions
-    topk_true = attn_weights.topk(k, dim=-1).indices  # (bsz, num_heads, q_len, k)
-    topk_approx = low_attn_weights.topk(k, dim=-1).indices
-
-    # Compute overlap
-    recall = (topk_approx.unsqueeze(-1) == topk_true.unsqueeze(-2))  # (bsz, num_heads, q_len, k, k)
-    recall = recall.any(dim=-1).float().sum(dim=-1) / k  # recall per query (bsz, num_heads, q_len)
-
-    return recall.mean().item()  # scalar: average recall over batch, head, and position
-
-
-class Extractor(nn.Module):
-    def __init__(self, input_dim, hidden_dim, output_dim):
-        super(Extractor, self).__init__()
-        self.model = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim),
-            nn.SiLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.SiLU(),
-            nn.Linear(hidden_dim, output_dim)
-        )
+class Qwen2MLP(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.config = config
+        self.hidden_size = config.hidden_size
+        self.intermediate_size = config.intermediate_size
+        self.gate_proj = nn.Linear(self.hidden_size, self.intermediate_size, bias=False)
+        self.up_proj = nn.Linear(self.hidden_size, self.intermediate_size, bias=False)
+        self.down_proj = nn.Linear(self.intermediate_size, self.hidden_size, bias=False)
+        self.act_fn = ACT2FN[config.hidden_act]
 
     def forward(self, x):
-        return self.model(x)
-    
+        down_proj = self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x))
+        return down_proj
+
+
 class Qwen2Attention(nn.Module):
     """Multi-headed attention from 'Attention Is All You Need' paper"""
 
-    def __init__(self, config: SparseQwen2Config, layer_idx: int):
+    def __init__(self, config: Qwen2Config, layer_idx: int):
         super().__init__()
         self.config = config
         self.layer_idx = layer_idx
         self.head_dim = getattr(config, "head_dim", config.hidden_size // config.num_attention_heads)
         self.num_key_value_groups = config.num_attention_heads // config.num_key_value_heads
-        self.sparse_head_dim = config.sparse_head_dim
         self.scaling = self.head_dim**-0.5
-        self.sparse_scaling = self.sparse_head_dim**-0.5
-        self.num_attention_heads = config.num_attention_heads
-        self.num_key_value_heads = config.num_key_value_heads
         self.attention_dropout = config.attention_dropout
         self.is_causal = True
         self.q_proj = nn.Linear(config.hidden_size, config.num_attention_heads * self.head_dim, bias=True)
@@ -201,26 +74,16 @@ class Qwen2Attention(nn.Module):
         self.v_proj = nn.Linear(config.hidden_size, config.num_key_value_heads * self.head_dim, bias=True)
         self.o_proj = nn.Linear(config.num_attention_heads * self.head_dim, config.hidden_size, bias=False)
 
-       # self.sparser = nn.Linear(self.head_dim, self.sparse_head_dim, bias=False)
-        #self.q_sparser_i = nn.Parameter(torch.zeros(config.num_attention_heads, self.head_dim, self.head_dim))
-        # self.q_sparser_act = nn.SiLU()
-        # self.q_sparser_c = nn.Parameter(torch.zeros(config.num_attention_heads, self.head_dim, self.sparse_head_dim))
-        self.k_sparser = Extractor(config.token_compress_ratio, self.head_dim, 1)
-         
-        self.in_training = False
-        self.loss = nn.MSELoss()
-        self.token_compress_ratio = config.token_compress_ratio
     def forward(
         self,
         hidden_states: torch.Tensor,
+        execution_idx: int,
         position_embeddings: Tuple[torch.Tensor, torch.Tensor],
         attention_mask: Optional[torch.Tensor],
         past_key_value: Optional[Cache] = None,
         cache_position: Optional[torch.LongTensor] = None,
         **kwargs: Unpack[FlashAttentionKwargs],
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
-        
-        bsz, q_len, _ = hidden_states.shape
         input_shape = hidden_states.shape[:-1]
         hidden_shape = (*input_shape, -1, self.head_dim)
 
@@ -228,32 +91,32 @@ class Qwen2Attention(nn.Module):
         key_states = self.k_proj(hidden_states).view(hidden_shape).transpose(1, 2)
         value_states = self.v_proj(hidden_states).view(hidden_shape).transpose(1, 2)
 
-        
         cos, sin = position_embeddings
         query_states, key_states = apply_rotary_pos_emb(query_states, key_states, cos, sin)
 
-        #k_low = key_states - key_states.mean(dim=-2, keepdim=True)
-        k_low = key_states.view(bsz, self.num_key_value_heads, q_len // self.token_compress_ratio, self.token_compress_ratio, self.head_dim).transpose(-1, -2)
-        k_low = self.k_sparser(k_low)
-        
-        k_low = k_low.expand(-1, -1, -1, -1, self.token_compress_ratio).transpose(-1,-2).reshape(bsz, self.num_key_value_heads, q_len, self.head_dim)
-        
         if past_key_value is not None:
             # sin and cos are specific to RoPE models; cache_position needed for the static cache
             cache_kwargs = {"sin": sin, "cos": cos, "cache_position": cache_position}
-            key_states, value_states = past_key_value.update(key_states, value_states, self.layer_idx, cache_kwargs)
+            key_states, value_states = past_key_value.update(key_states, value_states, execution_idx, cache_kwargs)
 
         sliding_window = None
         if (
             self.config.use_sliding_window
-            and self.layer_idx % self.config.sliding_window_freq > 0
+            and getattr(self.config, "sliding_window", None) is not None
+            and self.layer_idx >= self.config.max_window_layers
         ):
             sliding_window = self.config.sliding_window
 
         attention_interface: Callable = eager_attention_forward
-        # if not self.in_training:
-        #         attention_interface = ALL_ATTENTION_FUNCTIONS[self.config._attn_implementation]
-        
+        if self.config._attn_implementation != "eager":
+            if self.config._attn_implementation == "sdpa" and kwargs.get("output_attentions", False):
+                logger.warning_once(
+                    "`torch.nn.functional.scaled_dot_product_attention` does not support `output_attentions=True`. Falling back to "
+                    'eager attention. This warning can be removed using the argument `attn_implementation="eager"` when loading the model.'
+                )
+            else:
+                attention_interface = ALL_ATTENTION_FUNCTIONS[self.config._attn_implementation]
+
         attn_output, attn_weights = attention_interface(
             self,
             query_states,
@@ -265,40 +128,13 @@ class Qwen2Attention(nn.Module):
             sliding_window=sliding_window,  # main diff with Llama
             **kwargs,
         )
-        if self.in_training:
-            
-            low_attn_output, low_attn_weights = attention_interface(
-                self,
-                query_states,
-                k_low,
-                value_states,
-                attention_mask,
-                dropout=0.0 if not self.training else self.attention_dropout,
-                scaling=self.scaling,
-                sliding_window=sliding_window,  # main diff with Llama
-                **kwargs,
-            )
-            
-            attn_weights = attn_weights.reshape(bsz, self.num_attention_heads, q_len, q_len // self.token_compress_ratio, self.token_compress_ratio).mean(dim=-1, keepdim=True)
-            attn_weights = attn_weights.expand(-1, -1, -1, -1, self.token_compress_ratio)
-            attn_weights = attn_weights.reshape(bsz, self.num_attention_heads, q_len, q_len)
-            
-            low_attn_weights = low_attn_weights[...,32:,:]
-            attn_weights = attn_weights[...,32:,:]
-            loss = attention_kl_loss(low_attn_weights, attn_weights)
-            recall = topk_recall(low_attn_weights, attn_weights, k=10)
-    
-    
-        else:
-            loss = None
-            recall = None
-        
+
         attn_output = attn_output.reshape(*input_shape, -1).contiguous()
         attn_output = self.o_proj(attn_output)
-        return attn_output, attn_weights, loss, recall
+        return attn_output, attn_weights
 
 class Qwen2DecoderLayer(nn.Module):
-    def __init__(self, config: SparseQwen2Config, layer_idx: int):
+    def __init__(self, config: Qwen2Config, layer_idx: int):
         super().__init__()
         self.hidden_size = config.hidden_size
         self.self_attn = Qwen2Attention(config=config, layer_idx=layer_idx)
@@ -314,6 +150,7 @@ class Qwen2DecoderLayer(nn.Module):
     def forward(
         self,
         hidden_states: torch.Tensor,
+        execution_idx: int,
         attention_mask: Optional[torch.Tensor] = None,
         position_ids: Optional[torch.LongTensor] = None,
         past_key_value: Optional[Cache] = None,
@@ -328,8 +165,9 @@ class Qwen2DecoderLayer(nn.Module):
         hidden_states = self.input_layernorm(hidden_states)
 
         # Self Attention
-        hidden_states, self_attn_weights, loss, recall = self.self_attn(
+        hidden_states, self_attn_weights = self.self_attn(
             hidden_states=hidden_states,
+            execution_idx=execution_idx,
             attention_mask=attention_mask,
             position_ids=position_ids,
             past_key_value=past_key_value,
@@ -347,7 +185,7 @@ class Qwen2DecoderLayer(nn.Module):
         hidden_states = self.mlp(hidden_states)
         hidden_states = residual + hidden_states
 
-        outputs = (hidden_states, loss, recall)
+        outputs = (hidden_states,)
         if output_attentions:
             outputs += (self_attn_weights,)
 
@@ -365,7 +203,7 @@ class Qwen2Model(Qwen2PreTrainedModel):
         config: Qwen2Config
     """
 
-    def __init__(self, config: SparseQwen2Config):
+    def __init__(self, config: Qwen2Config):
         super().__init__(config)
         self.padding_idx = config.pad_token_id
         self.vocab_size = config.vocab_size
@@ -378,8 +216,15 @@ class Qwen2Model(Qwen2PreTrainedModel):
         self.rotary_emb = Qwen2RotaryEmbedding(config=config)
         self.gradient_checkpointing = False
 
+        self.start_conv_idx = config.start_conv_idx
+        self.end_conv_idx = config.end_conv_idx
+        self.num_conv = config.num_conv
+        
+        self.execution_plan = list(range(self.end_conv_idx))
+        self.execution_plan.extend(list(range(self.start_conv_idx, self.end_conv_idx)) * self.num_conv)
+        self.execution_plan.extend(list(range(self.end_conv_idx, config.num_hidden_layers)))
         # Initialize weights and apply final processing
-        #self.post_init()
+        self.post_init()
 
     def get_input_embeddings(self):
         return self.embed_tokens
@@ -401,7 +246,7 @@ class Qwen2Model(Qwen2PreTrainedModel):
         return_dict: Optional[bool] = None,
         cache_position: Optional[torch.LongTensor] = None,
         **flash_attn_kwargs: Unpack[FlashAttentionKwargs],
-    ) -> Union[Tuple, SparseModelOutputWithPast]:
+    ) -> Union[Tuple, BaseModelOutputWithPast]:
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
@@ -445,10 +290,10 @@ class Qwen2Model(Qwen2PreTrainedModel):
         # decoder layers
         all_hidden_states = () if output_hidden_states else None
         all_self_attns = () if output_attentions else None
-        total_loss = 0
-        recall = ()
-        for decoder_layer in self.layers:
+
+        for execution_idx, layer_idx in enumerate(self.execution_plan):
             
+            decoder_layer = self.layers[layer_idx]
             if output_hidden_states:
                 all_hidden_states += (hidden_states,)
 
@@ -456,6 +301,7 @@ class Qwen2Model(Qwen2PreTrainedModel):
                 layer_outputs = self._gradient_checkpointing_func(
                     decoder_layer.__call__,
                     hidden_states,
+                    execution_idx,
                     causal_mask,
                     position_ids,
                     past_key_values,
@@ -467,6 +313,7 @@ class Qwen2Model(Qwen2PreTrainedModel):
             else:
                 layer_outputs = decoder_layer(
                     hidden_states,
+                    execution_idx=execution_idx,
                     attention_mask=causal_mask,
                     position_ids=position_ids,
                     past_key_value=past_key_values,
@@ -478,25 +325,21 @@ class Qwen2Model(Qwen2PreTrainedModel):
                 )
 
             hidden_states = layer_outputs[0]
-            if layer_outputs[1] is not None:
-                total_loss += layer_outputs[1]
-            
-            if layer_outputs[2] is not None:
-                recall += (layer_outputs[2],)
-                
+
+            if output_attentions:
+                all_self_attns += (layer_outputs[1],)
+
         hidden_states = self.norm(hidden_states)
 
         # add hidden states from the last decoder layer
         if output_hidden_states:
             all_hidden_states += (hidden_states,)
 
-        output = SparseModelOutputWithPast(
+        output = BaseModelOutputWithPast(
             last_hidden_state=hidden_states,
-            attention_loss=total_loss,
-            recall=recall,
             past_key_values=past_key_values if use_cache else None,
             hidden_states=all_hidden_states,
-            attentions=all_self_attns
+            attentions=all_self_attns,
         )
         return output if return_dict else output.to_tuple()
 
@@ -592,7 +435,7 @@ class Qwen2Model(Qwen2PreTrainedModel):
         device: torch.device,
         cache_position: torch.Tensor,
         batch_size: int,
-        config: SparseQwen2Config,
+        config: Qwen2Config,
         past_key_values: Cache,
     ):
         """
@@ -668,7 +511,7 @@ class Qwen2ForCausalLM(Qwen2PreTrainedModel, GenerationMixin):
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
         # Initialize weights and apply final processing
-        #self.post_init()
+        self.post_init()
 
     def get_input_embeddings(self):
         return self.model.embed_tokens
@@ -706,7 +549,7 @@ class Qwen2ForCausalLM(Qwen2PreTrainedModel, GenerationMixin):
         cache_position: Optional[torch.LongTensor] = None,
         num_logits_to_keep: Union[int, torch.Tensor] = 0,
         **loss_kwargs,
-    ) -> Union[Tuple, SparseCausalLMOutputWithPast]:
+    ) -> Union[Tuple, CausalLMOutputWithPast]:
         r"""
         Args:
             labels (`torch.LongTensor` of shape `(batch_size, sequence_length)`, *optional*):
@@ -758,9 +601,8 @@ class Qwen2ForCausalLM(Qwen2PreTrainedModel, GenerationMixin):
             return_dict=return_dict,
             cache_position=cache_position
         )
-        
+
         hidden_states = outputs[0]
-        attention_loss = outputs[1]
         # Only compute necessary logits, and do not upcast them to float if we are not computing the loss
         
         logits = None
@@ -793,23 +635,10 @@ class Qwen2ForCausalLM(Qwen2PreTrainedModel, GenerationMixin):
                     **loss_kwargs,
                 )
 
-        return SparseCausalLMOutputWithPast(
+        return CausalLMOutputWithPast(
             loss=loss,
-            attention_loss=attention_loss,
-            recall=outputs.recall,
             logits=logits,
             past_key_values=outputs.past_key_values,
             hidden_states=outputs.hidden_states,
             attentions=outputs.attentions,
         )
-
-    def init_training(self, layer_idx):
-        
-        for name, param in self.named_parameters():
-            if ('sparser' in name) and (str(layer_idx) in name):
-                param.requires_grad = True
-                param.data.normal_(mean=0, std=0.02)
-            else:
-                param.requires_grad = False
-        
-        self.model.layers[layer_idx].self_attn.in_training = True

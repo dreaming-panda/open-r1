@@ -161,6 +161,7 @@ class SparseQwen2Config(PretrainedConfig):
         use_cache=True,
         tie_word_embeddings=False,
         rope_theta=10000.0,
+        token_compress_ratio=1,
         rope_scaling=None,
         use_sliding_window=False,
         sliding_window=4096,
@@ -190,6 +191,7 @@ class SparseQwen2Config(PretrainedConfig):
         self.rope_theta = rope_theta
         self.rope_scaling = rope_scaling
         self.attention_dropout = attention_dropout
+        self.token_compress_ratio = token_compress_ratio
         # Validate the correctness of rotary position embeddings parameters
         # BC: if there is a 'type' field, move it to 'rope_type'.
         if self.rope_scaling is not None and "type" in self.rope_scaling:
