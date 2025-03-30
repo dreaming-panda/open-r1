@@ -34,7 +34,7 @@ from transformers.utils import (
 )
 from transformers.utils.deprecation import deprecate_kwarg
 from transformers.models.qwen2.configuration_qwen2 import Qwen2Config
-from transformers.models.qwen2.modeling_qwen2 import apply_rotary_pos_emb, eager_attention_forward, Qwen2RMSNorm, Qwen2RotaryEmbedding, Qwen2PreTrainedModel, QWEN2_START_DOCSTRING, QWEN2_INPUTS_DOCSTRING
+from transformers.models.qwen2.modeling_qwen2 import apply_rotary_pos_emb, eager_attention_forward, Qwen2RMSNorm, Qwen2RotaryEmbedding, Qwen2PreTrainedModel, QWEN2_START_DOCSTRING, QWEN2_INPUTS_DOCSTRING, Qwen2MLP
 from liger_kernel.transformers.fused_linear_cross_entropy import LigerFusedLinearCrossEntropyLoss
 logger = logging.get_logger(__name__)
 
@@ -54,7 +54,7 @@ def topk_along_last_dim_abs_inplace_(input_tensor: torch.Tensor, k: int):
     return input_tensor
 
 
-class Qwen2MLP(nn.Module):
+class Qwen2SparseMLP(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.config = config
@@ -66,8 +66,7 @@ class Qwen2MLP(nn.Module):
         self.act_fn = ACT2FN[config.hidden_act]
     def forward(self, x):
         gate = self.act_fn(self.gate_proj(x))
-        with torch.no_grad():
-            gate = topk_along_last_dim_abs_inplace_(gate, k=self.intermediate_size//2)
+        gate = topk_along_last_dim_abs_inplace_(gate, k=self.intermediate_size//2)
         down_proj = self.down_proj(gate * self.up_proj(x))
         return down_proj
     
@@ -152,7 +151,8 @@ class Qwen2DecoderLayer(nn.Module):
         super().__init__()
         self.hidden_size = config.hidden_size
         self.self_attn = Qwen2Attention(config=config, layer_idx=layer_idx)
-        self.mlp = Qwen2MLP(config)
+        self.sparse_mlp = Qwen2SparseMLP(config)
+        self.mlp = nn.Linear(in_features=1, out_features=1)
         self.input_layernorm = Qwen2RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
         self.post_attention_layernorm = Qwen2RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
         if config.sliding_window and config._attn_implementation != "flash_attention_2":
@@ -196,7 +196,7 @@ class Qwen2DecoderLayer(nn.Module):
         # Fully Connected
         residual = hidden_states
         hidden_states = self.post_attention_layernorm(hidden_states)
-        hidden_states = self.mlp(hidden_states)
+        hidden_states = self.sparse_mlp(hidden_states)
         hidden_states = residual + hidden_states
 
         outputs = (hidden_states,)

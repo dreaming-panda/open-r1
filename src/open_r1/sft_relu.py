@@ -62,7 +62,7 @@ from trl import (
 #from transformers import Qwen2ForCausalLM, Qwen2Config
 from liger_kernel.transformers import apply_liger_kernel_to_qwen2
 from open_r1.conv_model_config import ConvModelConfig
-from open_r1.ReluQwen import Qwen2ForCausalLM, Qwen2Config
+from ReluQwen import Qwen2ForCausalLM, Qwen2Config
 logger = logging.getLogger(__name__)
 
 
@@ -140,7 +140,7 @@ def main(script_args, training_args, model_args):
     config._attn_implementation = model_args.attn_implementation
     
     model = Qwen2ForCausalLM.from_pretrained(model_args.model_name_or_path, config=config)
-    apply_liger_kernel_to_qwen2(model, swiglu=False)
+    apply_liger_kernel_to_qwen2(model=model, swiglu=False)
     trainer = SFTTrainer(
         model=model,
         args=training_args,
