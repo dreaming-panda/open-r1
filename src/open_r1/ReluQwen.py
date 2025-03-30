@@ -233,9 +233,7 @@ class Qwen2Model(Qwen2PreTrainedModel):
         self.end_conv_idx = config.end_conv_idx
         self.num_conv = config.num_conv
         
-        self.execution_plan = list(range(self.end_conv_idx))
-        self.execution_plan.extend(list(range(self.start_conv_idx, self.end_conv_idx)) * self.num_conv)
-        self.execution_plan.extend(list(range(self.end_conv_idx, config.num_hidden_layers)))
+        self.execution_plan = list(range(config.num_hidden_layers))
         # Initialize weights and apply final processing
         self.post_init()
 
@@ -304,9 +302,8 @@ class Qwen2Model(Qwen2PreTrainedModel):
         all_hidden_states = () if output_hidden_states else None
         all_self_attns = () if output_attentions else None
 
-        for execution_idx, layer_idx in enumerate(self.execution_plan):
+        for layer_idx, decoder_layer in enumerate(self.layers):
             
-            decoder_layer = self.layers[layer_idx]
             if output_hidden_states:
                 all_hidden_states += (hidden_states,)
 
@@ -314,7 +311,7 @@ class Qwen2Model(Qwen2PreTrainedModel):
                 layer_outputs = self._gradient_checkpointing_func(
                     decoder_layer.__call__,
                     hidden_states,
-                    execution_idx,
+                    layer_idx,
                     causal_mask,
                     position_ids,
                     past_key_values,
@@ -326,7 +323,7 @@ class Qwen2Model(Qwen2PreTrainedModel):
             else:
                 layer_outputs = decoder_layer(
                     hidden_states,
-                    execution_idx=execution_idx,
+                    execution_idx=layer_idx,
                     attention_mask=causal_mask,
                     position_ids=position_ids,
                     past_key_value=past_key_values,
