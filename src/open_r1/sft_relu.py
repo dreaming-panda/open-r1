@@ -63,6 +63,7 @@ from trl import (
 from liger_kernel.transformers import apply_liger_kernel_to_qwen2
 from open_r1.conv_model_config import ConvModelConfig
 from ReluQwen import Qwen2ForCausalLM, Qwen2Config
+from sparse_trainer import SparseTrainer
 logger = logging.getLogger(__name__)
 
 
@@ -141,7 +142,7 @@ def main(script_args, training_args, model_args):
     
     model = Qwen2ForCausalLM.from_pretrained(model_args.model_name_or_path, config=config)
     apply_liger_kernel_to_qwen2(model=model, swiglu=False)
-    trainer = SFTTrainer(
+    trainer = SparseTrainer(
         model=model,
         args=training_args,
         train_dataset=dataset[script_args.dataset_train_split],
