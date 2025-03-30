@@ -41,6 +41,18 @@ logger = logging.get_logger(__name__)
 _CHECKPOINT_FOR_DOC = "meta-qwen2/Qwen2-2-7b-hf"
 _CONFIG_FOR_DOC = "Qwen2Config"
 
+import torch
+
+def topk_along_last_dim_abs_inplace_(input_tensor: torch.Tensor, k: int):
+    
+    abs_tensor = input_tensor.abs()
+    
+    _, indices_to_zero = torch.topk(abs_tensor, input_tensor.size(-1) - k, dim=-1, largest=False)
+    
+    input_tensor.scatter_(-1, indices_to_zero, 0)
+
+    return input_tensor
+
 
 class Qwen2MLP(nn.Module):
     def __init__(self, config):
@@ -52,9 +64,11 @@ class Qwen2MLP(nn.Module):
         self.up_proj = nn.Linear(self.hidden_size, self.intermediate_size, bias=False)
         self.down_proj = nn.Linear(self.intermediate_size, self.hidden_size, bias=False)
         self.act_fn = ACT2FN[config.hidden_act]
-
     def forward(self, x):
-        down_proj = self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x))
+        gate = self.act_fn(self.gate_proj(x))
+        with torch.no_grad():
+            gate = topk_along_last_dim_abs_inplace_(gate, k=self.intermediate_size//2)
+        down_proj = self.down_proj(gate * self.up_proj(x))
         return down_proj
     
 class Qwen2Attention(nn.Module):
