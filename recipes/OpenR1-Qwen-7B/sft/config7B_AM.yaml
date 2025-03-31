@@ -10,7 +10,7 @@ attn_implementation: flash_attention_2
 # Data training arguments
 dataset_name: ZMC2019/AM1.4M
 dataset_num_proc: 48
-
+dataset_train_split: train[:600000]
 #SFT hyperparam
 max_length: 32768
 weight_decay: 0.0001
