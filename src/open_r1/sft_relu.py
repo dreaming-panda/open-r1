@@ -61,7 +61,7 @@ from trl import (
 )
 #from transformers import Qwen2ForCausalLM, Qwen2Config
 from liger_kernel.transformers import apply_liger_kernel_to_qwen2
-from open_r1.conv_model_config import ConvModelConfig
+from conv_model_config import ConvModelConfig
 from ReluQwen import Qwen2ForCausalLM, Qwen2Config
 from sparse_trainer import SparseTrainer
 logger = logging.getLogger(__name__)
