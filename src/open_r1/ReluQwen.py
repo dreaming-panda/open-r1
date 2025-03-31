@@ -65,9 +65,11 @@ class Qwen2SparseMLP(nn.Module):
         self.up_proj = nn.Linear(self.hidden_size, self.intermediate_size, bias=False)
         self.down_proj = nn.Linear(self.intermediate_size, self.hidden_size, bias=False)
         self.act_fn = ACT2FN[config.hidden_act]
+        self.ffn_frac = config.ffn_frac
+        
     def forward(self, x):
         gate = self.act_fn(self.gate_proj(x))
-        gate = topk_along_last_dim_abs_inplace_(gate, k=self.intermediate_size//2)
+        gate = topk_along_last_dim_abs_inplace_(gate, k=int(self.intermediate_size * self.ffn_frac))
         down_proj = self.down_proj(gate * self.up_proj(x))
         return down_proj
     

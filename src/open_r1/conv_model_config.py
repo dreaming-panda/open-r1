@@ -183,6 +183,11 @@ class ConvModelConfig:
         metadata={"help": "The adjusted learning rate."},
     )
     
+    ffn_frac: float = field(
+        default=0.5,
+        metadata={"help": "FFN Layers activate fraction"},
+    )
+    
     def __post_init__(self):
         if self.load_in_8bit and self.load_in_4bit:
             raise ValueError("You can't use 8 bit and 4 bit precision at the same time")

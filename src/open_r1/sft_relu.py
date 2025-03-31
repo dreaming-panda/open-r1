@@ -138,6 +138,7 @@ def main(script_args, training_args, model_args):
     config.start_conv_idx=model_args.start_conv_idx
     config.end_conv_idx=model_args.end_conv_idx
     config.num_conv=model_args.num_conv
+    config.ffn_frac=model_args.ffn_frac
     config._attn_implementation = model_args.attn_implementation
     
     model = Qwen2ForCausalLM.from_pretrained(model_args.model_name_or_path, config=config)
