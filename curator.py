@@ -18,9 +18,9 @@ features = Features({
 })
 
 data_900k = load_dataset('a-m-team/AM-DeepSeek-R1-Distilled-1.4M', 'am_0.9M', features=features)
-data_500k = load_dataset('a-m-team/AM-DeepSeek-R1-Distilled-1.4M', 'am_0.5M', features=features)
+#data_500k = load_dataset('a-m-team/AM-DeepSeek-R1-Distilled-1.4M', 'am_0.5M', features=features)
 
-merged_train = concatenate_datasets([data_900k['train'], data_500k['train']])
+#merged_train = concatenate_datasets([data_900k['train'], data_500k['train']])
 
-merged_dataset = DatasetDict({'train': merged_train})
-merged_dataset.push_to_hub("ZMC2019/AM1.4M")
+merged_dataset = DatasetDict({'train': data_900k['train']})
+merged_dataset.push_to_hub("ZMC2019/AM0.9M")
