@@ -29,7 +29,7 @@ max_steps: -1
 num_train_epochs: 1
 bf16: true
 do_eval: false
-use_liger_kernel: true
+use_liger_kernel: false
 eval_strategy: 'no'
 gradient_checkpointing: true
 gradient_checkpointing_kwargs:
@@ -48,4 +48,4 @@ report_to:
 save_strategy: "epoch"
 save_total_limit: 1
 seed: 42
-use_liger: true
+use_liger: false
