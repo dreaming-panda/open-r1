@@ -31,15 +31,15 @@ eval_strategy: 'no'
 gradient_checkpointing: true
 gradient_checkpointing_kwargs:
   use_reentrant: false
-hub_model_id: Qwen7B-Roll-L28E3X
+hub_model_id: Qwen7B-test
 hub_strategy: every_save
 log_level: info
 logging_steps: 5
 logging_strategy: steps
 packing: true
-output_dir: data/Qwen7B-Roll-L28E3X
+output_dir: data/Qwen7B-test
 overwrite_output_dir: true
-push_to_hub: true
+push_to_hub: false
 report_to:
 - wandb
 save_strategy: "epoch"
