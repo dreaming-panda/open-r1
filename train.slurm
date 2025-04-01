@@ -21,8 +21,7 @@ MASTER_PORT=29500  # 你也可以随机选一个空闲端口
 
 # === 3. 启动命令 ===
 accelerate launch \
-  --config_file recipes/accelerate_configs/zero3.yaml \
-  --multi_node \
+  --config_file recipes/accelerate_configs/distributed.yaml \
   --num_processes $WORLD_SIZE \
   --machine_rank $NODE_RANK \
   --main_process_ip $MASTER_ADDR \
