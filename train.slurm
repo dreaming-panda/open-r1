@@ -10,7 +10,8 @@
 
 # === 1. 环境设置 ===
 source ~/.bashrc
-conda activate your_env_name          # 替换成你的conda环境
+source ~/anaconda3/etc/profile.d/conda.sh
+conda activate r1-train
 
 # === 2. 分布式设置 ===
 NODE_RANK=$SLURM_NODEID
