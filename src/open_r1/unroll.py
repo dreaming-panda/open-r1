@@ -15,6 +15,7 @@ config = Qwen2Config.from_pretrained(args.model)
 config.start_conv_idx = args.start
 config.end_conv_idx = args.end
 config.num_conv = args.num_conv
+config.residual_input = False
 model = Qwen2ForCausalLM.from_pretrained(args.model, config=config)
 tokenizer = AutoTokenizer.from_pretrained(args.model)
 model.zero_init()
