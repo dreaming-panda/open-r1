@@ -1,4 +1,5 @@
-from transformers import Qwen2ForCausalLM, Qwen2Config, AutoTokenizer
+from transformers import Qwen2Config, AutoTokenizer
+from ResQwen import Qwen2ForCausalLM
 import torch
 import copy
 import argparse
@@ -11,9 +12,12 @@ parser.add_argument('--output_dir', type=str, default="Qwen1.5B-L60-Flat",help='
 args = parser.parse_args()
 # Load model and configuration
 config = Qwen2Config.from_pretrained(args.model)
-model = Qwen2ForCausalLM.from_pretrained(args.model, torch_dtype=torch.bfloat16)
+config.start_conv_idx = args.start
+config.end_conv_idx = args.end
+config.num_conv = args.num_conv
+model = Qwen2ForCausalLM.from_pretrained(args.model, config=config)
 tokenizer = AutoTokenizer.from_pretrained(args.model)
-
+model.zero_init()
 start_conv_idx = args.start
 end_conv_idx = args.end
 num_conv = args.num_conv

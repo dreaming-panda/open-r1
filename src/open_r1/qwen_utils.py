@@ -25,11 +25,11 @@ def get_optimizer_parameter_group_qwen(
         
         
         use_adj = False
-        if "model.layers." in name:
+        if "model.layers." in name or "residual" in name:
             parts = name.split(".")
             try:
                 block_idx = int(parts[2])
-                if start_adj_lr_idx <= block_idx < end_adj_lr_idx:
+                if start_adj_lr_idx <= block_idx < end_adj_lr_idx or "residual" in name:
                     use_adj = True
             except:
                 pass
@@ -44,7 +44,7 @@ def get_optimizer_parameter_group_qwen(
             group_decay_base.append(param)
         else:
             group_nodecay_base.append(param)
-
+            
     optimizer_dict = [
         {"params": group_decay_adj, "lr": adj_lr, "weight_decay": weight_decay},
         {"params": group_nodecay_adj, "lr": adj_lr, "weight_decay": 0.0},
