@@ -213,7 +213,7 @@ class Qwen2Model(Qwen2PreTrainedModel):
         nn.SiLU(),
         nn.Linear(config.hidden_size, config.hidden_size),
         nn.SiLU(),
-        nn.Linear(config.hidden_size, config.hidden_size, bias=False),
+        nn.Linear(config.hidden_size, 1, bias=False),
         nn.Sigmoid(),
         )
         

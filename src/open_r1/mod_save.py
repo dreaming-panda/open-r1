@@ -22,6 +22,11 @@ model.model.router[0].weight.data.normal_(mean=0.0, std=0.02)
 model.model.router[2].weight.data.normal_(mean=0.0, std=0.02)
 model.model.router[4].weight.data.normal_(mean=0.0, std=0.02)
 model.model.router[6].weight.data.normal_(mean=0.0, std=0.02)
+
+model.model.router[0].bias.data.zero_()
+model.model.router[2].bias.data.zero_()
+model.model.router[4].bias.data.zero_()
+
 # Save the modified model
 model.save_pretrained(args.output_dir)
 tokenizer.save_pretrained(args.output_dir)
