@@ -4,7 +4,7 @@ import torch
 import copy
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument('--model', type=str, default="Qwen/Qwen2.5-1.5B-Instruct",help='model')
+parser.add_argument('--model', type=str, default="Qwen/Qwen2.5-7B-Instruct",help='model')
 parser.add_argument('--start', type=int, default=12,help='start_conv_idx')
 parser.add_argument('--end', type=int, default=16,help='end_conv_idx')
 parser.add_argument('--num_conv', type=int, default=1,help='num_conv')
