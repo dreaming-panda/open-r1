@@ -63,7 +63,7 @@ from trl import (
 #from transformers import Qwen2ForCausalLM, Qwen2Config
 from liger_kernel.transformers import apply_liger_kernel_to_qwen2
 from conv_model_config import ConvModelConfig
-from MoDQwen import Qwen2ForCausalLM, Qwen2Config
+from MoDQwen2 import Qwen2ForCausalLM, Qwen2Config
 from qwen_utils import get_optimizer_parameter_group_qwen_router
 logger = logging.getLogger(__name__)
 
@@ -134,20 +134,20 @@ def main(script_args, training_args, model_args):
     ############################
     # Initialize the SFT Trainer
     ############################
-    
+
     config = Qwen2Config.from_pretrained(model_args.model_name_or_path)
     config.start_conv_idx=model_args.start_conv_idx
     config.end_conv_idx=model_args.end_conv_idx
     config.num_conv=model_args.num_conv
     config._attn_implementation = model_args.attn_implementation
-    
+
 
     model = Qwen2ForCausalLM.from_pretrained(model_args.model_name_or_path, config=config)
-    
-    optimizer_kwargs = get_optimizer_parameter_group_qwen_router(model,model_args.adj_lr, 
+
+    optimizer_kwargs = get_optimizer_parameter_group_qwen_router(model,model_args.adj_lr,
     training_args.weight_decay, training_args.learning_rate)
     apply_liger_kernel_to_qwen2(model)
-    
+
     trainer = SFTTrainer(
         model=model,
         args=training_args,

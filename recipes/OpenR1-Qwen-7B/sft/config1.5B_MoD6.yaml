@@ -1,12 +1,12 @@
 # Model arguments
 # You need to download the model and manually change the rope to 300k and max_position_embeddings to 32768
 # the config file should match https://huggingface.co/open-r1/OpenR1-Qwen-7B/blob/main/config.json
-model_name_or_path: Qwen1.5B-S12E16-MoD
+model_name_or_path: Qwen1.5B-L32-MoD
 model_revision: main
 torch_dtype: bfloat16
 attn_implementation: flash_attention_2
-start_conv_idx: 12
-end_conv_idx: 16
+start_conv_idx: 16
+end_conv_idx: 20
 num_conv: 6
 adj_lr: 1.5e-4
 
@@ -35,13 +35,13 @@ eval_strategy: 'no'
 gradient_checkpointing: true
 gradient_checkpointing_kwargs:
   use_reentrant: false
-hub_model_id: Qwen1.5B-S12E16-MoD6
+hub_model_id: Qwen1.5B-L32-MoD6X
 hub_strategy: every_save
 log_level: info
 logging_steps: 5
 logging_strategy: steps
 packing: true
-output_dir: data/Qwen1.5B-S12E16-MoD6
+output_dir: Qwen1.5B-L32-MoD6X
 overwrite_output_dir: true
 push_to_hub: true
 report_to:
