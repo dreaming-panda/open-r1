@@ -39,7 +39,7 @@ logging_strategy: steps
 packing: true
 output_dir: data/Qwen7B-L28-Flat-tuned
 overwrite_output_dir: true
-push_to_hub: false
+push_to_hub: true
 report_to:
 - wandb
 save_strategy: "epoch"
