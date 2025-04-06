@@ -211,16 +211,11 @@ class Qwen2Model(Qwen2PreTrainedModel):
         nn.SiLU(),
         nn.Linear(config.hidden_size, config.hidden_size),
         nn.SiLU(),
-        nn.Linear(config.hidden_size, config.hidden_size),
-        nn.SiLU(),
         nn.Linear(config.hidden_size, 1, bias=False),
         nn.Sigmoid(),
         )
 
 
-        self.execution_plan = list(range(self.end_conv_idx))
-        self.execution_plan.extend(list(range(self.start_conv_idx, self.end_conv_idx)) * self.num_conv)
-        self.execution_plan.extend(list(range(self.end_conv_idx, config.num_hidden_layers)))
         # Initialize weights and apply final processing
         self.post_init()
 

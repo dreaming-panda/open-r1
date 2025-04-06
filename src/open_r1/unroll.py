@@ -1,10 +1,10 @@
-from transformers import Qwen2Config, AutoTokenizer, Qwen2ForCausalLM
-# from MoDQwen2 import Qwen2ForCausalLM
+from transformers import Qwen2Config, AutoTokenizer
+from MoDQwen2 import Qwen2ForCausalLM
 import torch
 import copy
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument('--model', type=str, default="Qwen/Qwen2.5-7B-Instruct",help='model')
+parser.add_argument('--model', type=str, default="Qwen/Qwen2.5-1.5B-Instruct",help='model')
 parser.add_argument('--start', type=int, default=12,help='start_conv_idx')
 parser.add_argument('--end', type=int, default=16,help='end_conv_idx')
 parser.add_argument('--num_conv', type=int, default=1,help='num_conv')
@@ -39,14 +39,14 @@ model.model.layers = torch.nn.ModuleList(layers)
 # Update configuration
 model.config.num_hidden_layers = config.num_hidden_layers + (end_conv_idx - start_conv_idx) * num_conv
 
-# model.model.router[0].weight.data.normal_(mean=0.0, std=0.02)
-# model.model.router[2].weight.data.normal_(mean=0.0, std=0.02)
-# model.model.router[4].weight.data.normal_(mean=0.0, std=0.02)
-# model.model.router[6].weight.data.normal_(mean=0.0, std=0.02)
+model.model.router[0].weight.data.normal_(mean=0.0, std=0.02)
+model.model.router[2].weight.data.normal_(mean=0.0, std=0.02)
+model.model.router[4].weight.data.normal_(mean=0.0, std=0.02)
+model.model.router[6].weight.data.normal_(mean=0.0, std=0.02)
 
-# model.model.router[0].bias.data.zero_()
-# model.model.router[2].bias.data.zero_()
-# model.model.router[4].bias.data.zero_()
+model.model.router[0].bias.data.zero_()
+model.model.router[2].bias.data.zero_()
+model.model.router[4].bias.data.zero_()
 
 # Save the modified model
 model.save_pretrained(args.output_dir)
