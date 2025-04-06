@@ -42,11 +42,9 @@ model.config.num_hidden_layers = config.num_hidden_layers + (end_conv_idx - star
 model.model.router[0].weight.data.normal_(mean=0.0, std=0.02)
 model.model.router[2].weight.data.normal_(mean=0.0, std=0.02)
 model.model.router[4].weight.data.normal_(mean=0.0, std=0.02)
-model.model.router[6].weight.data.normal_(mean=0.0, std=0.02)
 
 model.model.router[0].bias.data.zero_()
 model.model.router[2].bias.data.zero_()
-model.model.router[4].bias.data.zero_()
 
 # Save the modified model
 model.save_pretrained(args.output_dir)
