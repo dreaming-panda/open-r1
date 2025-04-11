@@ -1,5 +1,7 @@
 #!/bin/bash
 #SBATCH --time=30:00
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
 #SBATCH --gpus-per-task=8
 #SBATCH -e batch-%j.err
 #SBATCH -o batch-%j.out
