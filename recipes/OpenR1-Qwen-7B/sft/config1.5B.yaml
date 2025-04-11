@@ -41,7 +41,7 @@ logging_strategy: steps
 packing: true
 output_dir: data/OpenR1-Qwen-1.5B-SFT-Instruct-Conv
 overwrite_output_dir: true
-push_to_hub: true
+push_to_hub: false
 report_to:
 - wandb
 save_strategy: "epoch"
