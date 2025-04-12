@@ -1,7 +1,7 @@
 # Model arguments
 # You need to download the model and manually change the rope to 300k and max_position_embeddings to 32768
 # the config file should match https://huggingface.co/open-r1/OpenR1-Qwen-7B/blob/main/config.json
-model_name_or_path: Qwen/Qwen2.5-7B-Instruct 
+model_name_or_path: Qwen2.5-7B-Expand
 model_revision: main
 torch_dtype: bfloat16
 attn_implementation: flash_attention_2
@@ -31,13 +31,13 @@ eval_strategy: 'no'
 gradient_checkpointing: true
 gradient_checkpointing_kwargs:
   use_reentrant: false
-hub_model_id: Qwen7B-L28-Flat-tuned
+hub_model_id: Qwen7B-EP
 hub_strategy: every_save
 log_level: info
 logging_steps: 5
 logging_strategy: steps
 packing: true
-output_dir: data/Qwen7B-L28-Flat-tuned
+output_dir: data/Qwen7B-EP
 overwrite_output_dir: true
 push_to_hub: true
 report_to:
