@@ -86,14 +86,15 @@ def main(script_args, training_args, model_args):
     logger.info(f"Model parameters {model_args}")
     logger.info(f"Script parameters {script_args}")
     logger.info(f"Training parameters {training_args}")
-
+    print(training_args.output_dir)
+    print(os.path.isdir(training_args.output_dir))
     # Check for last checkpoint
     last_checkpoint = None
     if os.path.isdir(training_args.output_dir):
         last_checkpoint = get_last_checkpoint(training_args.output_dir)
     if last_checkpoint is not None and training_args.resume_from_checkpoint is None:
         logger.info(f"Checkpoint detected, resuming training at {last_checkpoint=}.")
-
+    print(last_checkpoint)
     if "wandb" in training_args.report_to:
         init_wandb_training(training_args)
 
