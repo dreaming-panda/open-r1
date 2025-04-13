@@ -1,7 +1,7 @@
 # Model arguments
 # You need to download the model and manually change the rope to 300k and max_position_embeddings to 32768
 # the config file should match https://huggingface.co/open-r1/OpenR1-Qwen-7B/blob/main/config.json
-model_name_or_path: Qwen2.5-7B-Expand
+model_name_or_path: ZMC2019/Qwen7B-EP
 model_revision: main
 torch_dtype: bfloat16
 attn_implementation: flash_attention_2
@@ -37,7 +37,7 @@ log_level: info
 logging_steps: 5
 logging_strategy: steps
 packing: true
-output_dir: /mnt/localssd/zmc/open-r1/data/Qwen7B-EP
+output_dir: data/Qwen7B-EP
 overwrite_output_dir: true
 push_to_hub: true
 report_to:
