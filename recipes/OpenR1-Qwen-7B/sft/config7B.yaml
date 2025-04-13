@@ -37,8 +37,7 @@ log_level: info
 logging_steps: 5
 logging_strategy: steps
 packing: true
-output_dir: data/Qwen7B-EP
-resume_from_checkpoint: data/Qwen7B-EP
+output_dir: /mnt/localssd/zmc/open-r1/data/Qwen7B-EP
 overwrite_output_dir: true
 push_to_hub: true
 report_to:
