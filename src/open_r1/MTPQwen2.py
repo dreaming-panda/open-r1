@@ -8,7 +8,7 @@ from typing import Callable, List, Optional, Tuple, Union
 
 import torch
 from torch import nn
-import wandb
+
 from transformers.activations import ACT2FN
 from transformers.cache_utils import Cache, DynamicCache, SlidingWindowCache, StaticCache
 from transformers.generation import GenerationMixin
@@ -37,53 +37,10 @@ from transformers.models.qwen2.configuration_qwen2 import Qwen2Config
 from transformers.models.qwen2.modeling_qwen2 import apply_rotary_pos_emb, eager_attention_forward, Qwen2MLP, Qwen2RMSNorm, Qwen2RotaryEmbedding, Qwen2PreTrainedModel, QWEN2_START_DOCSTRING, QWEN2_INPUTS_DOCSTRING
 from liger_kernel.transformers.fused_linear_cross_entropy import LigerFusedLinearCrossEntropyLoss
 logger = logging.get_logger(__name__)
-from dataclasses import dataclass
-from transformers.utils import ModelOutput
+
 _CHECKPOINT_FOR_DOC = "meta-qwen2/Qwen2-2-7b-hf"
 _CONFIG_FOR_DOC = "Qwen2Config"
-import torch.distributed as dist
-def is_main_process():
-    return not dist.is_initialized() or dist.get_rank() == 0
 
-@dataclass
-class MTPModelOutputWithPast(ModelOutput):
-    """
-    Base class for model's outputs that may also contain a past key/values (to speed up sequential decoding).
-
-    Args:
-        last_hidden_state (`torch.FloatTensor` of shape `(batch_size, sequence_length, hidden_size)`):
-            Sequence of hidden-states at the output of the last layer of the model.
-
-            If `past_key_values` is used only the last hidden-state of the sequences of shape `(batch_size, 1,
-            hidden_size)` is output.
-        past_key_values (`tuple(tuple(torch.FloatTensor))`, *optional*, returned when `use_cache=True` is passed or when `config.use_cache=True`):
-            Tuple of `tuple(torch.FloatTensor)` of length `config.n_layers`, with each tuple having 2 tensors of shape
-            `(batch_size, num_heads, sequence_length, embed_size_per_head)`) and optionally if
-            `config.is_encoder_decoder=True` 2 additional tensors of shape `(batch_size, num_heads,
-            encoder_sequence_length, embed_size_per_head)`.
-
-            Contains pre-computed hidden-states (key and values in the self-attention blocks and optionally if
-            `config.is_encoder_decoder=True` in the cross-attention blocks) that can be used (see `past_key_values`
-            input) to speed up sequential decoding.
-        hidden_states (`tuple(torch.FloatTensor)`, *optional*, returned when `output_hidden_states=True` is passed or when `config.output_hidden_states=True`):
-            Tuple of `torch.FloatTensor` (one for the output of the embeddings, if the model has an embedding layer, +
-            one for the output of each layer) of shape `(batch_size, sequence_length, hidden_size)`.
-
-            Hidden-states of the model at the output of each layer plus the optional initial embedding outputs.
-        attentions (`tuple(torch.FloatTensor)`, *optional*, returned when `output_attentions=True` is passed or when `config.output_attentions=True`):
-            Tuple of `torch.FloatTensor` (one for each layer) of shape `(batch_size, num_heads, sequence_length,
-            sequence_length)`.
-
-            Attentions weights after the attention softmax, used to compute the weighted average in the self-attention
-            heads.
-    """
-
-    last_hidden_state: torch.FloatTensor = None
-    mtp_hidden_state: torch.FloatTensor = None
-    past_key_values: Optional[Tuple[Tuple[torch.FloatTensor]]] = None
-    hidden_states: Optional[Tuple[torch.FloatTensor, ...]] = None
-    attentions: Optional[Tuple[torch.FloatTensor, ...]] = None
-    
 class Qwen2Attention(nn.Module):
     """Multi-headed attention from 'Attention Is All You Need' paper"""
 
@@ -218,53 +175,6 @@ class Qwen2DecoderLayer(nn.Module):
 
         return outputs
 
-class MTPModule(nn.Module):
-    def __init__(self, config: Qwen2Config):
-        super().__init__()
-        self.config = config
-        self.input_layernorm = Qwen2RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
-        self.hidden_layernorm = Qwen2RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
-        self.projection = nn.Linear(2 * config.hidden_size, config.hidden_size, bias=False)
-        self.transformer = Qwen2DecoderLayer(config, config.num_hidden_layers + 1)
-        self.output_layernorm = Qwen2RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
-        
-    def forward(
-        self,
-        inputs_embeds: torch.FloatTensor,
-        hidden_states: torch.FloatTensor,
-        execution_idx: int,
-        attention_mask: Optional[torch.Tensor] = None,
-        position_ids: Optional[torch.LongTensor] = None,
-        past_key_value: Optional[Cache] = None,
-        output_attentions: Optional[bool] = False,
-        use_cache: Optional[bool] = False,
-        cache_position: Optional[torch.LongTensor] = None,
-        position_embeddings: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,  # necessary, but kept here for BC
-        **kwargs: Unpack[FlashAttentionKwargs],
-    ):
-        
-        
-        inputs_embeds_normalized = self.input_layernorm(inputs_embeds)
-        hidden_states_normalized = self.hidden_layernorm(hidden_states)
-        hidden_states = torch.cat([inputs_embeds_normalized, hidden_states_normalized], dim=-1)
-        hidden_states = self.projection(hidden_states)
-        outputs = self.transformer(
-                    hidden_states,
-                    execution_idx=execution_idx,
-                    attention_mask=attention_mask,
-                    position_ids=position_ids,
-                    past_key_value=past_key_value,
-                    output_attentions=output_attentions,
-                    use_cache=use_cache,
-                    cache_position=cache_position,
-                    position_embeddings=position_embeddings,
-                    **kwargs,
-                )
-        
-        hidden_states = outputs[0]
-        hidden_states = self.output_layernorm(hidden_states)
-        
-        return hidden_states
 @add_start_docstrings(
     "The bare Qwen2 Model outputting raw hidden-states without any specific head on top.",
     QWEN2_START_DOCSTRING,
@@ -288,17 +198,22 @@ class Qwen2Model(Qwen2PreTrainedModel):
         )
         self.norm = Qwen2RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
         self.rotary_emb = Qwen2RotaryEmbedding(config=config)
-        self.mtp = MTPModule(config=config)
-        
         self.gradient_checkpointing = False
 
         self.start_conv_idx = config.start_conv_idx
         self.end_conv_idx = config.end_conv_idx
         self.num_conv = config.num_conv
+        self.conv_block_size = (self.end_conv_idx - self.start_conv_idx) // self.num_conv
+        self.num_hidden_layers = config.num_hidden_layers
+        self.residual_input = config.residual_input
         
-        self.execution_plan = list(range(self.end_conv_idx))
-        self.execution_plan.extend(list(range(self.start_conv_idx, self.end_conv_idx)) * self.num_conv)
-        self.execution_plan.extend(list(range(self.end_conv_idx, config.num_hidden_layers)))
+        self.residual_block = nn.Sequential(
+        nn.Linear(2 * config.hidden_size, config.hidden_size),
+        nn.SiLU(),
+        nn.Linear(config.hidden_size, config.hidden_size),
+        nn.SiLU(),
+        nn.Linear(config.hidden_size, config.hidden_size, bias=False)
+        )
         # Initialize weights and apply final processing
         self.post_init()
 
@@ -322,7 +237,7 @@ class Qwen2Model(Qwen2PreTrainedModel):
         return_dict: Optional[bool] = None,
         cache_position: Optional[torch.LongTensor] = None,
         **flash_attn_kwargs: Unpack[FlashAttentionKwargs],
-    ) -> Union[Tuple, MTPModelOutputWithPast]:
+    ) -> Union[Tuple, BaseModelOutputWithPast]:
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
@@ -367,8 +282,8 @@ class Qwen2Model(Qwen2PreTrainedModel):
         all_hidden_states = () if output_hidden_states else None
         all_self_attns = () if output_attentions else None
 
-        for execution_idx, layer_idx in enumerate(self.execution_plan):
-            
+        for layer_idx in range(self.start_conv_idx):
+
             decoder_layer = self.layers[layer_idx]
             if output_hidden_states:
                 all_hidden_states += (hidden_states,)
@@ -377,7 +292,7 @@ class Qwen2Model(Qwen2PreTrainedModel):
                 layer_outputs = self._gradient_checkpointing_func(
                     decoder_layer.__call__,
                     hidden_states,
-                    execution_idx,
+                    layer_idx,
                     causal_mask,
                     position_ids,
                     past_key_values,
@@ -389,7 +304,7 @@ class Qwen2Model(Qwen2PreTrainedModel):
             else:
                 layer_outputs = decoder_layer(
                     hidden_states,
-                    execution_idx=execution_idx,
+                    execution_idx=layer_idx,
                     attention_mask=causal_mask,
                     position_ids=position_ids,
                     past_key_value=past_key_values,
@@ -405,47 +320,100 @@ class Qwen2Model(Qwen2PreTrainedModel):
             if output_attentions:
                 all_self_attns += (layer_outputs[1],)
 
-        hidden_states = self.norm(hidden_states)
+        residual = hidden_states
         
-        position_embeddings = position_embeddings[0][:,:-1,:], position_embeddings[1][:,:-1,:]
-        if self.gradient_checkpointing and self.training:
-                mtp_hidden_states = self._gradient_checkpointing_func(
-                    self.mtp.__call__,
-                    inputs_embeds[:,1:,:],
-                    hidden_states[:,:-1,:],
-                    self.config.num_hidden_layers,
+        for layer_idx in range(self.start_conv_idx, self.end_conv_idx):
+            
+            if (layer_idx - self.start_conv_idx) % self.conv_block_size == 0 and self.residual_input:
+                hidden_states = hidden_states + residual
+            
+            decoder_layer = self.layers[layer_idx]
+            if output_hidden_states:
+                all_hidden_states += (hidden_states,)
+
+            if self.gradient_checkpointing and self.training:
+                layer_outputs = self._gradient_checkpointing_func(
+                    decoder_layer.__call__,
+                    hidden_states,
+                    layer_idx,
                     causal_mask,
-                    position_ids[:,:-1],
+                    position_ids,
                     past_key_values,
                     output_attentions,
                     use_cache,
-                    cache_position[:-1],
+                    cache_position,
                     position_embeddings,
                 )
-        else:
-                mtp_hidden_states = decoder_layer(
-                    inputs_embeds[:,1:,:],
-                    hidden_states[:,:-1,:],
-                    self.config.num_hidden_layers,
-                    causal_mask,
-                    position_ids[:,:-1],
-                    past_key_values,
-                    output_attentions,
-                    use_cache,
-                    cache_position[:-1],
-                    position_embeddings,
+            else:
+                layer_outputs = decoder_layer(
+                    hidden_states,
+                    execution_idx=layer_idx,
+                    attention_mask=causal_mask,
+                    position_ids=position_ids,
+                    past_key_value=past_key_values,
+                    output_attentions=output_attentions,
+                    use_cache=use_cache,
+                    cache_position=cache_position,
+                    position_embeddings=position_embeddings,
                     **flash_attn_kwargs,
                 )
 
-        #print(hidden_states)
+            hidden_states = layer_outputs[0]
+
+            if output_attentions:
+                all_self_attns += (layer_outputs[1],)
+                
+        hidden_states = torch.cat([hidden_states, residual], dim=-1)
+        hidden_states = self.residual_block(hidden_states)
         
+        hidden_states = residual  + hidden_states
+        
+        for layer_idx in range(self.end_conv_idx, self.num_hidden_layers):
+
+            decoder_layer = self.layers[layer_idx]
+            if output_hidden_states:
+                all_hidden_states += (hidden_states,)
+
+            if self.gradient_checkpointing and self.training:
+                layer_outputs = self._gradient_checkpointing_func(
+                    decoder_layer.__call__,
+                    hidden_states,
+                    layer_idx,
+                    causal_mask,
+                    position_ids,
+                    past_key_values,
+                    output_attentions,
+                    use_cache,
+                    cache_position,
+                    position_embeddings,
+                )
+            else:
+                layer_outputs = decoder_layer(
+                    hidden_states,
+                    execution_idx=layer_idx,
+                    attention_mask=causal_mask,
+                    position_ids=position_ids,
+                    past_key_value=past_key_values,
+                    output_attentions=output_attentions,
+                    use_cache=use_cache,
+                    cache_position=cache_position,
+                    position_embeddings=position_embeddings,
+                    **flash_attn_kwargs,
+                )
+
+            hidden_states = layer_outputs[0]
+
+            if output_attentions:
+                all_self_attns += (layer_outputs[1],)
+                
+        hidden_states = self.norm(hidden_states)
+
         # add hidden states from the last decoder layer
         if output_hidden_states:
             all_hidden_states += (hidden_states,)
 
-        output = MTPModelOutputWithPast(
+        output = BaseModelOutputWithPast(
             last_hidden_state=hidden_states,
-            mtp_hidden_state=mtp_hidden_states,
             past_key_values=past_key_values if use_cache else None,
             hidden_states=all_hidden_states,
             attentions=all_self_attns,
@@ -618,7 +586,7 @@ class Qwen2ForCausalLM(Qwen2PreTrainedModel, GenerationMixin):
         self.model = Qwen2Model(config)
         self.vocab_size = config.vocab_size
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
-        self.mtp_loss_scaler = 0.1
+
         # Initialize weights and apply final processing
         self.post_init()
 
@@ -712,7 +680,6 @@ class Qwen2ForCausalLM(Qwen2PreTrainedModel, GenerationMixin):
         )
 
         hidden_states = outputs[0]
-        mtp_hidden_states = outputs[1]
         # Only compute necessary logits, and do not upcast them to float if we are not computing the loss
         
         logits = None
@@ -734,23 +701,7 @@ class Qwen2ForCausalLM(Qwen2PreTrainedModel, GenerationMixin):
             loss = lce(self.lm_head.weight, shift_hidden_states, shift_labels)
             if reduction == "sum":
                 loss /= loss_kwargs["num_items_in_batch"]
-            
-            mtp_shift_hidden_states = mtp_hidden_states[..., :-1, :].contiguous()
-            mtp_shift_labels = labels[..., 2:].contiguous()
-            mtp_shift_hidden_states = mtp_shift_hidden_states.view(-1, self.config.hidden_size)
-            mtp_shift_labels = mtp_shift_labels.view(-1)
-            mtp_loss = lce(self.lm_head.weight, mtp_shift_hidden_states, mtp_shift_labels)
-            mtp_loss = mtp_loss * self.mtp_loss_scaler
-            if reduction == "sum":
-                mtp_loss /= loss_kwargs["num_items_in_batch"]
-            
-            # if self.training and is_main_process():
-            #     wandb.log({
-            #             "loss/ntp": loss.item(),
-            #             "loss/mtp": mtp_loss.item(),
-            #         }) 
-            loss = loss + mtp_loss
-            
+
         else:  # if in inference mode materialize logits
             logits = self.lm_head(hidden_states[:, -num_logits_to_keep:, :])
             if labels is not None:
@@ -768,3 +719,10 @@ class Qwen2ForCausalLM(Qwen2PreTrainedModel, GenerationMixin):
             hidden_states=outputs.hidden_states,
             attentions=outputs.attentions,
         )
+
+    def zero_init(self):
+        
+        self.model.residual_block[0].weight.data.normal_(mean=0.0, std=0.02)
+        self.model.residual_block[2].weight.data.normal_(mean=0.0, std=0.02)
+        self.model.residual_block[4].weight.data.zero_()
+        

@@ -41,7 +41,6 @@ import sys
 
 import datasets
 import torch
-from torch.optim.adamw import AdamW
 import transformers
 from datasets import load_dataset
 from transformers import set_seed
@@ -64,7 +63,6 @@ from trl import (
 from liger_kernel.transformers import apply_liger_kernel_to_qwen2
 from conv_model_config import ConvModelConfig
 from MTPQwen import Qwen2ForCausalLM, Qwen2Config
-from qwen_utils import get_optimizer_parameter_group_qwen
 logger = logging.getLogger(__name__)
 
 
@@ -140,19 +138,12 @@ def main(script_args, training_args, model_args):
     config.end_conv_idx=model_args.end_conv_idx
     config.num_conv=model_args.num_conv
     config._attn_implementation = model_args.attn_implementation
-    config.residual_input = model_args.residual_input
+    
     model = Qwen2ForCausalLM.from_pretrained(model_args.model_name_or_path, config=config)
-    
     apply_liger_kernel_to_qwen2(model)
-    
-    optimizer_kwargs = get_optimizer_parameter_group_qwen(model, 
-        model_args.start_adj_lr_idx, model_args.end_adj_lr_idx, model_args.adj_lr, 
-    training_args.weight_decay, training_args.learning_rate)
-    
     trainer = SFTTrainer(
         model=model,
         args=training_args,
-        optimizer_cls_and_kwargs=(AdamW, optimizer_kwargs),
         train_dataset=dataset[script_args.dataset_train_split],
         eval_dataset=dataset[script_args.dataset_test_split] if training_args.eval_strategy != "no" else None,
         processing_class=tokenizer,
