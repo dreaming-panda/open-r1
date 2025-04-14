@@ -37,8 +37,6 @@ log_level: info
 logging_steps: 5
 logging_strategy: steps
 packing: true
-output_dir: /sensei-fs/users/xuhuang/zhuominc/ckpts/Qwen7B-Full-EP2
-overwrite_output_dir: true
 push_to_hub: true
 report_to:
 - wandb
