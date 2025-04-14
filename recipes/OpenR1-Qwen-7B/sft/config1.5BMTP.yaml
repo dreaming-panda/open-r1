@@ -48,4 +48,3 @@ save_strategy: "epoch"
 save_total_limit: 3
 seed: 42
 use_liger: true
-run_name: L44-Roll-MTP
