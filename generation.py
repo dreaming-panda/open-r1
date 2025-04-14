@@ -2,7 +2,7 @@ from transformers import Qwen2ForCausalLM, AutoTokenizer, TextStreamer
 import torch
 
 # 加载模型和分词器
-model_path = "/home/zhuominc/conv/open-r1/Qwen2.5-7B-Expand"
+model_path = "/home/zhuominc/conv/open-r1/Qwen2.5-7B-QO-Expand"
 model = Qwen2ForCausalLM.from_pretrained(model_path, device_map="cuda:0", torch_dtype=torch.bfloat16)
 
 tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
