@@ -1,5 +1,5 @@
 from transformers import Qwen2Config, AutoTokenizer
-from MTPQwen import Qwen2ForCausalLM
+from MTPQwen4 import Qwen2ForCausalLM
 import torch
 import copy
 from torch import nn
@@ -29,6 +29,7 @@ model = Qwen2ForCausalLM.from_pretrained(args.model, config=config)
 
 tokenizer = AutoTokenizer.from_pretrained(args.model)
 model.model.mtp.apply(init_weights)
+model.model.mtp.transformer.load_state_dict(model.model.layers[-1].state_dict())
 
 # Save the modified model
 model.save_pretrained(args.output_dir)
