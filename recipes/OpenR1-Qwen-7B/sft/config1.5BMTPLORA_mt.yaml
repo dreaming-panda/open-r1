@@ -39,7 +39,7 @@ log_level: info
 logging_steps: 5
 logging_strategy: steps
 packing: true
-output_dir: /fsx-storygen/jwzhao/checkpoints/Qwen1.5B-MTP-Lora
+output_dir: /checkpoint/storygen/jwzhao/Qwen1.5B-MTP-Lora
 overwrite_output_dir: true
 push_to_hub: false
 report_to:
