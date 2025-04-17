@@ -422,8 +422,8 @@ class Qwen2Model(Qwen2PreTrainedModel):
                     cache_position[:-1],
                     position_embeddings,
                 )
-        else:
-                mtp_hidden_states = decoder_layer(
+        elif self.training:
+                mtp_hidden_states = self.mtp(
                     inputs_embeds[:,1:,:],
                     hidden_states[:,:-1,:],
                     self.config.num_hidden_layers,
@@ -445,7 +445,7 @@ class Qwen2Model(Qwen2PreTrainedModel):
 
         output = MTPModelOutputWithPast(
             last_hidden_state=hidden_states,
-            mtp_hidden_state=mtp_hidden_states,
+            mtp_hidden_state=mtp_hidden_states if self.training else None,
             past_key_values=past_key_values if use_cache else None,
             hidden_states=all_hidden_states,
             attentions=all_self_attns,
@@ -712,7 +712,7 @@ class Qwen2ForCausalLM(Qwen2PreTrainedModel, GenerationMixin):
         )
 
         hidden_states = outputs[0]
-        mtp_hidden_states = outputs[1]
+        mtp_hidden_states = outputs[1] if self.training else None
         # Only compute necessary logits, and do not upcast them to float if we are not computing the loss
         
         logits = None
