@@ -1,8 +1,8 @@
 from transformers import AutoTokenizer, TextStreamer
 import torch
-from src.open_r1.MTPQwen3 import Qwen2ForCausalLM
+from src.open_r1.HPQwen import Qwen2ForCausalLM
 # 加载模型和分词器
-model_path = "ZMC2019/Qwen1.5B-MTP-Lora"
+model_path = "/home/zhuominc/conv/open-r1/Qwen7B-HP-AMP"
 model = Qwen2ForCausalLM.from_pretrained(model_path, device_map="cuda:0", torch_dtype=torch.bfloat16)
 
 tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
