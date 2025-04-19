@@ -62,7 +62,7 @@ from trl import (
 #from transformers import Qwen2ForCausalLM, Qwen2Config
 from liger_kernel.transformers import apply_liger_kernel_to_qwen2
 from open_r1.conv_model_config import ConvModelConfig
-from open_r1.StochasQwen import Qwen2ForCausalLM, Qwen2Config
+from StochasQwen import Qwen2ForCausalLM, Qwen2Config
 logger = logging.getLogger(__name__)
 
 
