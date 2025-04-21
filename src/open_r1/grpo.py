@@ -25,7 +25,7 @@ from transformers import set_seed
 from transformers.trainer_utils import get_last_checkpoint
 
 from open_r1.configs import GRPOConfig
-from open_r1.rewards import (
+from rewards import (
     accuracy_reward,
     code_reward,
     format_reward,
