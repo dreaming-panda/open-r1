@@ -2,7 +2,7 @@
 #!/bin/bash
 
 export CUDA_VISIBLE_DEVICES=0,1,2,3
-trl vllm-serve --model ZMC2019/Qwen1.5B-L36-90K --tensor_parallel_size 4 --gpu_memory_utilization 0.9 &
+trl vllm-serve --model ZMC2019/Qwen1.5B-L36-Flat-90K --tensor_parallel_size 4 --gpu_memory_utilization 0.9 &
 
 sleep 120
 
