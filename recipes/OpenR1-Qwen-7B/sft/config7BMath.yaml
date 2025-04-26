@@ -33,18 +33,19 @@ eval_strategy: 'no'
 gradient_checkpointing: true
 gradient_checkpointing_kwargs:
   use_reentrant: false
-hub_model_id: Qwen7B-Math-L28
+hub_model_id: Qwen7B-Math-L28-Base2
 hub_strategy: all_checkpoints
 log_level: info
 logging_steps: 5
 logging_strategy: steps
 packing: true
-output_dir: data/Qwen7B-Math-L28
+output_dir: data/Qwen7B-Math-L28-Base2
 overwrite_output_dir: true
 push_to_hub: true
 report_to:
 - wandb
-save_strategy: "epoch"
+save_strategy: "steps"
+save_steps: 550
 save_total_limit: 1
 seed: 42
 use_liger: true
